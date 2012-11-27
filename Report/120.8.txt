@@ -1,0 +1,9 @@
+Utilization target : 120
+Nbr of tasks : 8
+Nbr of systems to test: 100
+			EDFK	GlobalEDF
+Schedulable		73	86
+Avg nbr Core		2	2
+Avg Tot Idle		35509	38040
+Avg nbr of preemptions	696	861
+Avg nbr of migrations	257	356

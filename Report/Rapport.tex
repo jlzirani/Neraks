@@ -1,0 +1,254 @@
+\documentclass[11pt, a4paper,titlepage]{article}
+
+\usepackage[utf8]{inputenc}
+\usepackage[french]{babel}
+\usepackage[T1]{fontenc}
+\usepackage{url}
+\usepackage{listings}
+\usepackage{amssymb,amsmath}
+\usepackage[cc]{titlepic}
+\usepackage{graphicx} 
+\usepackage{lipsum}
+\usepackage{float}
+\usepackage{verbatim}
+
+\usepackage{geometry}
+\geometry{left=3.35cm, right=3.35cm, top=3.35cm, bottom=3.35cm}
+
+\titlepic{\includegraphics[scale=0.1]{ULB-Fackel.pdf}}
+\title{2012-2013 Project 1: EDF-k vs. Global EDF}
+\author{
+	Cédric \bsc{Lood}\\
+	Jean-Luc \bsc{Zirani}
+}
+\date{\today}
+
+\begin{document}
+\maketitle
+
+\tableofcontents
+\clearpage
+
+\section{Introduction}
+
+The present report provides some documentation related to the first project in Real Time Operating Systems (Fall 2012). The purpose of the project was to compare the performances of two multiprocessor schedulers: EDF-k and Global EDF in case of asynchronous and periodic systems with constrained deadlines.
+The systems considered consist of \emph{n} periodic, asynchronous and independent tasks $  \tau = \{ \tau_1, \tau_2, ..., \tau_n \}  $
+
+\section{How to use the software?}
+
+To compile the software please use the makefile located at the root of the project folder. The output of the compiler is four executables that can be run independently. Please note that the software is command-line oriented and GUI development is not in the pipeline for the moment. 
+
+For the \emph{taskGenerator} and the \emph{GlobalEDFvsEDF-k} executables, you can use the \emph{--help} or \emph{-h} to view the argument options that are available. 
+For the \emph{simGlobalEDF} and \emph{simEDF-k} you only need to specify the path to the tasks files (e.g.: ./simGlobalEDF path\_to\_my\_file/tasks).
+
+Please note that a segmentation fault can arrive but we do not have any idea why. 
+GDB says that it occured in glib.
+
+\section{Implementation details}
+
+In this section, we give some details about the data structures and algorithms used in some selected parts of the code. We mainly focus on the simulator because that is where the core of the project assignment lies.
+
+\subsection{Task Generator}
+
+\subsubsection{Data Structure}  
+
+A \emph{task} is a \emph{struct} consisting of the following attributes:
+\begin{itemize}
+\item an offset (\emph{m\_iOffset}) that represents the offset in time between the moment the simulation started and the moment when the task entered the system
+\item a period (\emph{m\_iPeriod}) that represents the periodicity of the jobs that will be submitted by the tasks
+\item a deadline (\emph{m\_iDeadline}) that represents the deadline at which the job will have to be finished
+\item a worst case execution time (\emph{m\_iWCET})
+\end{itemize}
+
+\subsubsection{Algorithms}
+
+In order to set the period of the tasks, we divide the utilization by the number of jobs chosen. The intuition behind the division is akin to taking a straight line of length equal to the utilization and then randomly placing n-1 separations on the line with the condition that you cannot have 2 separations at the same place. All the intervals now defined (n of them) are then set to the periods of each tasks. We also make sure that there is no single job that has an utilization over 100 percent (otherwise it would not fit on any processor). 
+
+Another interesting fact to note is that the deadline is random and belongs to the time interval between WCET and the period.
+
+\subsubsection{Tweak}
+
+We have chosen the periods to be multiples of 10 in order to avoid that the least common multiple (LCM) would be a number of a very large magnitude. This is a difficulty that we discovered as we were developing the software. For example, in some case we mainly had periods consisting of prime numbers and the LCM was very large. 
+
+\subsection{Simulator}
+\subsubsection{Data Structures}
+\subsubsection*{SJob}
+\begin{itemize}
+\item \emph{m\_psTask} : a pointer to the task to which the job belongs
+\item \emph{m\_uiStart} : moment at which it arrives in the system
+\item \emph{m\_uiDeadline} : deadline for the calculation
+\item \emph{m\_uiRemCost} : remaining cost (in processor time)
+\item \emph{m\_uiAssignedProc} : id of the processor to which it is assigned
+\item \emph{m\_bPriority} : fixed priority or not for EDF-k (boolean value)
+\end{itemize}
+\subsubsection*{SProc}
+This data structure is used to represent a processor with the following characteristics
+\begin{itemize}
+\item \emph{m\_uiProcId} : an Id specific to the processor.
+\item \emph{m\_uiIdle} :  the amount of time that the processor was idle.
+\item \emph{m\_sCurrJob} : assigned job (if any)
+\end{itemize}
+
+\subsubsection*{CSimulator}
+This class is used to run the simulator. The following variables are used for the simulation (note that some variables used for statistics are not listed here).
+\begin{itemize}
+\item \emph{m\_vecsTask} : the initial vector of tasks (sorted by utilization)
+\item \emph{m\_vecPassive} : vector of jobs that have not yet appeared in the system
+\item \emph{m\_vecWaitJob}: vector containing active jobs that do not have a processor
+\item \emph{m\_vecActiveProc}: vector of processor(s) that execute jobs
+\item \emph{m\_vecIdleProc}: vector of idle processor(s)
+\item \emph{m\_uiInternalTime}: represent the considered moment during the simulation.
+\item \emph{m\_uiMaxTime}: represent the study interval
+\item \emph{m\_bFeasible}: boolean to know if the system is schedulable or not.
+\end{itemize}
+
+\subsubsection{Algorithms}
+
+We provide here a quick description of the different functions of importance to the simulation of the scheduler. We have chosen to implement a simulator with variable steps.
+
+\begin{description}
+\item [simulate] \hfill
+\end{description}
+
+This is the core function of the simulator. It consists in a loop that runs until the simulation proves unschedulable or until it has reached the end of the study interval. The end of the study interval is reached when we have gone through the periodicity of the whole batch of tasks. In our case, we stop after 2*(least common multiple) + greatest offset of all the tasks. That gives us some safety that we have at least gone through a full cycle.
+\begin{description}
+\item [init] \hfill
+\end{description}
+
+This function is responsible for sorting the different vectors of passive and active tasks. The passive tasks are the ones that have not yet entered the system. The active tasks are being scheduled. The first thing that we do is to sort the passive tasks by priority (EDF-k and Global EDF).
+
+Note that this function also has the responsability to reset all the vectors and variables of the simulator and then set them properly.
+
+\begin{description}
+\item [reorganizeSystem] \hfill
+\end{description}
+
+This function has two responsabilities. The first one is to assign idle processors to waiting active jobs that have higher priorities. The second one is to verify that there are no waiting active jobs with higher priorities than at least one of the jobs currently executed. If it is the case, it swaps the waiting active job with the executed job that has the least priority.
+
+\begin{description}
+\item [updateJobs] \hfill
+\end{description}
+
+Ths function starts by updating the remaining cost of all the executed jobs by substracting the minimal amount that the simulator was able to carry. It then verifies if one or more jobs are finished. In that case, it sets the given processors in idle mode. It finishes by verifying that we have not missed a deadline, which would be considered a failure for the system's schedulability.
+
+\subsubsection{EDF-k}
+
+\begin{description}
+\item [How do we set priority?] \hfill
+\end{description}
+
+If the position of the task is inferior to \emph{k} then its job has a higher priority then the following tasks' jobs. In order to simplify the code, jobs that have the same priority are sorted by deadline (EDF). Please note that the vector of tasks are already sorted by utilization.
+
+\begin{description}
+\item [Calculation of k and of the minimum number of processors] \hfill
+\end{description}
+
+Using the formula described in the reference material, we can easily calculate the number of processors and the \emph{k} parameter that will be needed for a specific system to possibly be schedulable.
+
+\subsubsection{GlobalEDF}
+
+\begin{description}
+\item [How do we set priority?] \hfill
+\end{description}
+
+Global EDF is assimilated to EDF-1. The EDF-k algorithm will set all jobs with the same type of priority (deadline).
+
+\begin{description}
+\item [Calculation of the number of Processors needed] \hfill
+\end{description}
+
+Using the formula described in the reference material, we can easily calculate the number of processors that will be needed for a specific system to possibly be schedulable.
+
+\section{Performance simulation}
+
+For each tests we generated systems with different combinations of parameters and then ran several simulations. On these simulations, we got the number of schedulable systems by edf-k and global edf and the average number of processors, preemptions, migrations and finally the total amount of idle time. 
+
+The values that we used for utilization are : 120, 150, 180, 220 and 250 and those for the number of tasks are: 8, 10 and 15. This gives us 15 different  categories of systems. For each combination, we proceeded with 100 simulations.
+
+See Appendix B for the results or see the "Results" folder (format is "utilization.numberOfTasks.txt)
+
+\section{Conclusion}
+
+The simulation revealed that in most cases Global EDF has better chances to reach succesful schedulability of the system then its counterpart EDF-k. Nevertheless, when EDF-k can schedule a given system, it usually does it with slightly better performances. The proportion of systems succesfully schedulable by EDF-k is highly dependant on the number of tasks submitted and their utilization. When one or the other increases, the rate of succesful schedulability decreases.
+
+
+\pagebreak 
+\appendix
+\section{Coding Conventions}
+
+In order to be consistant in the naming of variables throughout the code, we have decided to use the following naming conventions:
+
+\begin{description}
+
+\item [Variable Names] \hfill
+
+The format used is: $ [scoping][static][const]\_[type][nameOfVariable] $
+
+\item [Scoping] \hfill
+
+\begin{itemize}
+\item g : global 
+\item m : class variables
+\item f : functions
+\item nothing : local to a scope
+\item static : s
+\item const : c
+\end{itemize} 
+
+\item [Primitives] \hfill
+
+\begin{itemize}
+\item vec : vector
+\item str : std string and C-style string
+\item ui : unsigned int
+\item i : int
+\item OGS: Oppa Gangnam Style
+\end{itemize}
+
+\item [Classes, Structures] \hfill
+
+\begin{itemize}
+\item class : CName
+\item struct : SName
+\item enum : EName 
+\end{itemize}
+
+\item [Examples] \hfill
+
+\begin{itemize}
+
+\item CSimEdf\_k : Class named "SimEdf\_k"
+\item m\_vecPassive : Class attribute of type vector, named "Passive" 
+\item m\_uiMMin : Class attribute of type unsigned int named "MMin"
+\end{itemize}
+
+\end{description}
+
+\pagebreak 
+
+\section{Simulation results}
+
+\verbatiminput{../results/120.8.txt}
+\verbatiminput{../results/120.10.txt}
+\verbatiminput{../results/120.15.txt}
+\verbatiminput{../results/150.8.txt}
+\pagebreak 
+\verbatiminput{../results/150.10.txt}
+\verbatiminput{../results/150.15.txt}
+\verbatiminput{../results/180.8.txt}
+\verbatiminput{../results/180.10.txt}
+\verbatiminput{../results/180.15.txt}
+\pagebreak 
+\verbatiminput{../results/220.8.txt}
+\verbatiminput{../results/220.10.txt}
+\verbatiminput{../results/220.15.txt}
+\verbatiminput{../results/250.8.txt}
+\verbatiminput{../results/250.10.txt}
+\pagebreak 
+\verbatiminput{../results/250.15.txt}
+%\addcontentsline{toc}{section}{Références}
+%\bibliographystyle{unsrt}
+%\bibliography{rapport}
+
+\end{document}
+

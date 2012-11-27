@@ -1,0 +1,17 @@
+\select@language {french}
+\contentsline {section}{\numberline {1}Introduction}{2}
+\contentsline {section}{\numberline {2}How to use the software?}{2}
+\contentsline {section}{\numberline {3}Implementation details}{2}
+\contentsline {subsection}{\numberline {3.1}Task Generator}{2}
+\contentsline {subsubsection}{\numberline {3.1.1}Data Structure}{2}
+\contentsline {subsubsection}{\numberline {3.1.2}Algorithms}{2}
+\contentsline {subsubsection}{\numberline {3.1.3}Tweak}{3}
+\contentsline {subsection}{\numberline {3.2}Simulator}{3}
+\contentsline {subsubsection}{\numberline {3.2.1}Data Structures}{3}
+\contentsline {subsubsection}{\numberline {3.2.2}Algorithms}{3}
+\contentsline {subsubsection}{\numberline {3.2.3}EDF-k}{4}
+\contentsline {subsubsection}{\numberline {3.2.4}GlobalEDF}{4}
+\contentsline {section}{\numberline {4}Performance simulation}{5}
+\contentsline {section}{\numberline {5}Conclusion}{5}
+\contentsline {section}{\numberline {A}Coding Conventions}{6}
+\contentsline {section}{\numberline {B}Simulation results}{7}
